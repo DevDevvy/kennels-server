@@ -1,51 +1,7 @@
 import sqlite3
 import json
-from models import animal
+from models.animal import Animal
 
-ANIMALS = [
-    {
-        "id": 1,
-        "name": "Snickers",
-        "species": "Dog",
-        "locationId": 1,
-        "customerId": 4,
-        "status": "Admitted"
-    },
-    {
-        "id": 2,
-        "name": "Gypsy",
-        "species": "Dog",
-        "locationId": 1,
-        "customerId": 2,
-        "status": "Admitted"
-    },
-    {
-        "id": 3,
-        "name": "Blue",
-        "species": "Cat",
-        "locationId": 2,
-        "customerId": 1,
-        "status": "Admitted"
-    }
-]
-
-
-
-
-# Function with a single parameter
-def get_single_animal(id):
-    # Variable to hold the found animal, if it exists
-    requested_animal = None
-
-    # Iterate the ANIMALS list above. Very similar to the
-    # for..of loops you used in JavaScript.
-    for animal in ANIMALS:
-        # Dictionaries in Python use [] notation to find a key
-        # instead of the dot notation that JavaScript used.
-        if animal["id"] == id:
-            requested_animal = animal
-
-    return requested_animal
 
 def create_animal(animal):
     # Get the id value of the last animal in the list
@@ -102,7 +58,7 @@ class Animal():
         self.location_id = location_id
         self.customer_id = customer_id
 
-
+# function gets all animals
 def get_all_animals():
     # Open a connection to the database
     with sqlite3.connect("./kennel.sqlite3") as conn:
@@ -145,5 +101,93 @@ def get_all_animals():
     # Use `json` package to properly serialize list as JSON
     return json.dumps(animals)
 
-# instantiate new animal:
-new_animal = Animal(1, "Snickers", "Dog", "Recreation", 1, 4)
+
+# query for single animal
+def get_single_animal(id):
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        # Use a ? parameter to inject a variable's value
+        # into the SQL statement. WHERE acts as filter
+        db_cursor.execute("""
+        SELECT
+            a.id,
+            a.name,
+            a.breed,
+            a.status,
+            a.location_id,
+            a.customer_id
+        FROM animal a
+        WHERE a.id = ?
+        """, ( id, ))
+
+        # Load the single result into memory
+        # finding single row uses fetchone instead of fetchall
+        data = db_cursor.fetchone()
+
+        # Create an animal instance from the current row
+        animal = Animal(data['id'], data['name'], data['breed'],
+                            data['status'], data['location_id'],
+                            data['customer_id'])
+
+        return json.dumps(animal.__dict__)
+    
+    
+def get_animals_by_location(location):
+
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        # Write the SQL query to get the information you want
+        db_cursor.execute("""
+        select
+            c.id,
+            c.name,
+            c.breed,
+            c.status,
+            c.location_id,
+            c.customer_id
+        from Animal c
+        WHERE c.location_id = ?
+        """, ( location, ))
+
+        animals = []
+        dataset = db_cursor.fetchall()
+
+        for row in dataset:
+            animal = Animal(row['id'], row['name'], row['breed'], row['status'], row['location_id'], row['customer_id'])
+            animals.append(animal.__dict__)
+
+    return json.dumps(animals)
+
+def get_animals_by_status(status):
+
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        # Write the SQL query to get the information you want
+        db_cursor.execute("""
+        select
+            c.id,
+            c.name,
+            c.breed,
+            c.status,
+            c.location_id,
+            c.customer_id
+        from Animal c
+        WHERE c.status = ?
+        """, ( status, ))
+
+        animals = []
+        dataset = db_cursor.fetchall()
+
+        for row in dataset:
+            animal = Animal(row['id'], row['name'], row['breed'], row['status'], row['location_id'], row['customer_id'])
+            animals.append(animal.__dict__)
+
+    return json.dumps(animals)
+
+

@@ -1,6 +1,7 @@
 import sqlite3
 import json
-from views import Customer
+from  models.customer import Customer
+
 CUSTOMERS = [
     {
         "id": 1,

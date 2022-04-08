@@ -1,9 +1,9 @@
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from views import get_all_animals, get_single_animal, get_customers_by_email
-from views.animal_requests import create_animal, delete_animal, update_animal
+from views.animal_requests import create_animal, delete_animal, get_animals_by_location, get_animals_by_status, update_animal
 from views.customer_requests import create_customer, delete_customer, get_all_customers, get_single_customer, update_customer
-from views.employee_requests import create_employee, delete_employee, update_employee
+from views.employee_requests import create_employee, delete_employee, get_all_employees, get_employees_by_location, get_single_employee, update_employee
 from views.location_requests import create_location, delete_location, update_location
 
 # Here's a class. It inherits from another class.
@@ -95,6 +95,11 @@ class HandleRequests(BaseHTTPRequestHandler):
                     response = f"{get_single_customer(id)}"
                 else:
                     response = f"{get_all_customers()}"
+            elif resource == "employees":
+                if id is not None:
+                    response = f"{get_single_employee(id)}"
+                else:
+                    response = f"{get_all_employees()}"
 
         # Response from parse_url() is a tuple with 3
         # items in it, which means the request was for
@@ -107,6 +112,12 @@ class HandleRequests(BaseHTTPRequestHandler):
             # email as a filtering value?
             if key == "email" and resource == "customers":
                 response = get_customers_by_email(value)
+            if key == "location_id" and resource == "animals":
+                response = get_animals_by_location(value)
+            if key == "status" and resource == "animals":
+                response = get_animals_by_status(value)
+            if key == "location_id" and resource == "employees":
+                response = get_employees_by_location(value)
 
         self.wfile.write(response.encode())
 
