@@ -1,25 +1,50 @@
-LOCATIONS = [
-    {
-        "id": 1,
-        "name": "Nashville North",
-        "address": "8422 Johnson Pike"
-    },
-    {
-        "id": 2,
-        "name": "Nashville South",
-        "address": "209 Emory Drive"
-    }
-]
+import sqlite3
+import json
+from models.location import Location
 
 def get_all_locations():
-    return LOCATIONS
+    # Open a connection to the database
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+
+        # Just use these. It's a Black Box.
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        # Write the SQL query to get the information you want
+        db_cursor.execute("""
+        SELECT
+            a.id,
+            a.address,
+            a.name
+        FROM Location a
+        """)
+
+        # Initialize an empty list to hold all location representations
+        locations = []
+
+        # Convert rows of data into a Python list
+        dataset = db_cursor.fetchall()
+
+        # Iterate list of data returned from database
+        for row in dataset:
+
+            # Create a location instance from the current row.
+            # Note that the database fields are specified in
+            # exact order of the parameters defined in the
+            # Locations class above.
+            location = Location(row['id'], row['address'], row['name'])
+
+            locations.append(location.__dict__)
+
+    # Use `json` package to properly serialize list as JSON
+    return json.dumps(locations)
 
 # Function with a single parameter
 def get_single_location(id):
-    # Variable to hold the found animal, if it exists
+    # Variable to hold the found location, if it exists
     requested_location = None
 
-    # Iterate the ANIMALS list above. Very similar to the
+    # Iterate the locationS list above. Very similar to the
     # for..of loops you used in JavaScript.
     for local in LOCATIONS:
         # Dictionaries in Python use [] notation to find a key
@@ -62,10 +87,29 @@ def delete_location(id):
         
         
 def update_location(id, new_location):
-    # Iterate the locationS list, but use enumerate() so that
-    # you can access the index value of each item.
-    for index, location in enumerate(LOCATIONS):
-        if location["id"] == id:
-            # Found the location. Update the value.
-            LOCATIONS[index] = new_location
-            break
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        db_cursor = conn.cursor()
+
+        db_cursor.execute("""
+        UPDATE location
+            SET
+                name = ?,
+                breed = ?,
+                status = ?,
+                location_id = ?,
+                customer_id = ?
+        WHERE id = ?
+        """, (new_location['name'], new_location['breed'],
+              new_location['status'], new_location['location_id'],
+              new_location['customer_id'], id, ))
+
+        # Were any rows affected?
+        # Did the client send an `id` that exists?
+        rows_affected = db_cursor.rowcount
+
+    if rows_affected == 0:
+        # Forces 404 response by main module
+        return False
+    else:
+        # Forces 204 response by main module
+        return True

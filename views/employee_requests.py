@@ -43,7 +43,7 @@ def get_all_employees():
             # Note that the database fields are specified in
             # exact order of the parameters defined in the
             # Animal class above.
-            employee = Employee(row['id'], row['name'], row['location_id'])
+            employee = Employee(row['id'], row['name'], row['location_id'], row['address'])
 
             employees.append(employee.__dict__)
 
@@ -97,14 +97,32 @@ def delete_employee(id):
         EMPLOYEES.pop(employee_index)
         
 def update_employee(id, new_employee):
-    # Iterate the employeeS list, but use enumerate() so that
-    # you can access the index value of each item.
-    for index, employee in enumerate(EMPLOYEES):
-        if employee["id"] == id:
-            # Found the employee. Update the value.
-            EMPLOYEES[index] = new_employee
-            break
-        
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        db_cursor = conn.cursor()
+
+        db_cursor.execute("""
+        UPDATE Employee
+            SET
+                id = ?,
+                name = ?,
+                location_id = ?,
+                address = ?
+        WHERE id = ?
+        """, (new_employee['id'], new_employee['name'], new_employee['location_id'],
+              new_employee['address'], id, ))
+
+        # Were any rows affected?
+        # Did the client send an `id` that exists?
+        rows_affected = db_cursor.rowcount
+
+    if rows_affected == 0:
+        # Forces 404 response by main module
+        return False
+    else:
+        # Forces 204 response by main module
+        return True
+    
+    
 def get_employees_by_location(location_id):
 
     with sqlite3.connect("./kennel.sqlite3") as conn:

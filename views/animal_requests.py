@@ -1,6 +1,9 @@
 import sqlite3
 import json
-from models.animal import Animal
+from models import Animal
+from models.customer import Customer
+from models.location import Location
+
 
 
 def create_animal(animal):
@@ -20,43 +23,45 @@ def create_animal(animal):
     return animal
 
 def delete_animal(id):
-    # Initial -1 value for animal index, in case one isn't found
-    animal_index = -1
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        db_cursor = conn.cursor()
 
-    # Iterate the ANIMALS list, but use enumerate() so that you
-    # can access the index value of each item
-    for index, animal in enumerate(ANIMALS):
-        if animal["id"] == id:
-            # Found the animal. Store the current index.
-            animal_index = index
+        db_cursor.execute("""
+        DELETE FROM animal
+        WHERE id = ?
+        """, (id, ))
 
-    # If the animal was found, use pop(int) to remove it from list
-    if animal_index >= 0:
-        ANIMALS.pop(animal_index)
-        
 
 def update_animal(id, new_animal):
-    # Iterate the ANIMALS list, but use enumerate() so that
-    # you can access the index value of each item.
-    for index, animal in enumerate(ANIMALS):
-        if animal["id"] == id:
-            # Found the animal. Update the value.
-            ANIMALS[index] = new_animal
-            break
-        
-        
-class Animal():
+    with sqlite3.connect("./kennel.sqlite3") as conn:
+        db_cursor = conn.cursor()
 
-    # Class initializer. It has 5 custom parameters, with the
-    # special `self` parameter that every method on a class
-    # needs as the first parameter.
-    def __init__(self, id, name, breed, status, location_id, customer_id):
-        self.id = id
-        self.name = name
-        self.breed = breed
-        self.status = status
-        self.location_id = location_id
-        self.customer_id = customer_id
+        db_cursor.execute("""
+        UPDATE Animal
+            SET
+                name = ?,
+                breed = ?,
+                status = ?,
+                location_id = ?,
+                customer_id = ?
+        WHERE id = ?
+        """, (new_animal['name'], new_animal['breed'],
+              new_animal['status'], new_animal['location_id'],
+              new_animal['customer_id'], id ))
+
+        # Were any rows affected?
+        # Did the client send an `id` that exists?
+        rows_affected = db_cursor.rowcount
+
+    if rows_affected == 0:
+        # Forces 404 response by main module
+        return False
+    else:
+        # Forces 204 response by main module
+        return True
+        
+        
+
 
 # function gets all animals
 def get_all_animals():
@@ -75,8 +80,16 @@ def get_all_animals():
             a.breed,
             a.status,
             a.location_id,
-            a.customer_id
-        FROM animal a
+            a.customer_id,
+            l.name location_name,
+            l.address location_address,
+            c.name customer_name,
+            c.address customer_address
+        FROM Animal a
+        JOIN Location l 
+            ON l.id = a.location_id
+        JOIN Customer c
+            ON a.customer_id = c.id
         """)
 
         # Initialize an empty list to hold all animal representations
@@ -88,18 +101,23 @@ def get_all_animals():
         # Iterate list of data returned from database
         for row in dataset:
 
-            # Create an animal instance from the current row.
-            # Note that the database fields are specified in
-            # exact order of the parameters defined in the
-            # Animal class above.
-            animal = Animal(row['id'], row['name'], row['breed'],
-                            row['status'], row['location_id'],
-                            row['customer_id'])
+            # Create an animal instance from the current row
+            animal = Animal(row['id'], row['name'], row['breed'], row['status'],
+                            row['location_id'], row['customer_id'])
 
+            # Create a Location instance from the current row
+            location = Location(row['location_id'], row['location_name'], row['location_address'])
+            customer = Customer(row['id'], row['customer_name'], row['customer_address'])
+
+            # Add the dictionary representation of the location to the animal
+            animal.location = location.__dict__
+            animal.customer = customer.__dict__
+
+            # Add the dictionary representation of the animal to the list
             animals.append(animal.__dict__)
 
-    # Use `json` package to properly serialize list as JSON
-    return json.dumps(animals)
+            # Use `json` package to properly serialize list as JSON
+        return json.dumps(animals)
 
 
 # query for single animal
